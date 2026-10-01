@@ -3,107 +3,262 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#090716">
-  <meta name="description" content="시간에 따라 색과 도트가 변화하는 몰입형 스탑워치">
-  <title>DOT / TIME — 스탑워치</title>
-  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%23090716'/%3E%3Cg fill='%23ffec57'%3E%3Ccircle cx='20' cy='20' r='6'/%3E%3Ccircle cx='44' cy='20' r='3'/%3E%3Ccircle cx='20' cy='44' r='3'/%3E%3Ccircle cx='44' cy='44' r='6'/%3E%3C/g%3E%3C/svg%3E">
+  <meta name="theme-color" content="#17113f">
+  <meta name="description" content="매초 타임 젤리가 쌓이는 게임형 스탑워치">
+  <title>JELLY TIME — 게임 스탑워치</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%2317113f'/%3E%3Ccircle cx='24' cy='34' r='14' fill='%23ff5ca8'/%3E%3Ccircle cx='43' cy='25' r='10' fill='%235fe2ff'/%3E%3Ccircle cx='20' cy='29' r='3' fill='white'/%3E%3Ccircle cx='39' cy='21' r='2.5' fill='white'/%3E%3C/svg%3E">
   <style>
-    :root { color-scheme: dark; --hue: 278; --hue-next: 330; --ink: #fffdf6; --dim: rgba(255,253,246,.58); --accent: hsl(var(--hue) 100% 68%); --accent-2: hsl(var(--hue-next) 100% 66%); --lime: #edff85; }
+    :root {
+      color-scheme: dark;
+      --bg: #17113f;
+      --ink: #fffdf2;
+      --dark: #22194e;
+      --yellow: #ffe66a;
+      --pink: #ff5ca8;
+      --blue: #5fe2ff;
+      --mint: #74f7b8;
+      --purple: #9a78ff;
+      --orange: #ff9657;
+      --panel: rgba(24, 17, 66, .78);
+      --stroke: rgba(255,255,255,.16);
+      --cell: clamp(38px, 5.2vw, 66px);
+      --gap: clamp(4px, .55vw, 8px);
+    }
+
     * { box-sizing: border-box; }
-    html, body { width: 100%; min-height: 100%; }
-    body { margin: 0; min-height: 100svh; overflow: hidden; color: var(--ink); background: radial-gradient(ellipse 80% 70% at calc(20% + var(--drift-x,0%)) calc(15% + var(--drift-y,0%)), hsl(var(--hue) 95% 55% / .28), transparent 64%), radial-gradient(ellipse 65% 80% at calc(88% - var(--drift-x,0%)) 86%, hsl(var(--hue-next) 96% 60% / .2), transparent 68%), linear-gradient(135deg,#080611 0%,hsl(var(--hue) 36% 10%) 52%,#060815 100%); font-family: Inter,Pretendard,"Noto Sans KR",system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; transition: background 1s linear; }
+    html, body { min-height: 100%; }
+    body {
+      margin: 0;
+      min-height: 100svh;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 14% 10%, rgba(154,120,255,.34), transparent 28rem),
+        radial-gradient(circle at 88% 82%, rgba(255,92,168,.22), transparent 32rem),
+        linear-gradient(145deg, #110d31, #20134b 48%, #0d1738);
+      font-family: Inter, Pretendard, "Noto Sans KR", system-ui, sans-serif;
+      overflow-x: hidden;
+    }
+
     button { font: inherit; }
-    #dotField { position: fixed; inset: 0; width: 100%; height: 100%; z-index: 0; pointer-events: none; }
-    .noise { position: fixed; inset: 0; z-index: 1; pointer-events: none; opacity: .18; background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.32'/%3E%3C/svg%3E"); mix-blend-mode: soft-light; }
-    .app { position: relative; z-index: 2; width: 100%; min-height: 100svh; display: grid; grid-template-columns: minmax(0,1fr) clamp(270px,25vw,360px); }
-    .stage { min-width: 0; min-height: 100svh; padding: clamp(22px,3.4vw,54px); display: flex; flex-direction: column; }
-    .topbar { display: flex; justify-content: space-between; align-items: center; gap: 20px; }
-    .identity { display: flex; align-items: center; gap: 13px; font-size: .9rem; font-weight: 800; letter-spacing: .16em; text-transform: uppercase; }
-    .logo-grid { display: grid; grid-template-columns: repeat(2,6px); gap: 4px; transform: rotate(45deg); }
-    .logo-grid i { width: 6px; height: 6px; display: block; border-radius: 50%; background: var(--ink); box-shadow: 0 0 12px var(--accent); }
-    .logo-grid i:nth-child(2), .logo-grid i:nth-child(3) { opacity: .3; }
-    .mode { display: flex; align-items: center; gap: 9px; padding: 9px 13px; border: 1px solid rgba(255,255,255,.15); border-radius: 999px; color: var(--dim); background: rgba(0,0,0,.12); backdrop-filter: blur(14px); font-size: .72rem; font-weight: 800; letter-spacing: .13em; text-transform: uppercase; }
-    .pulse { width: 7px; height: 7px; border-radius: 50%; background: rgba(255,255,255,.35); transition: background .25s,box-shadow .25s; }
-    .running .pulse { background: var(--lime); box-shadow: 0 0 0 5px rgba(237,255,133,.12),0 0 20px var(--lime); }
-    .time-space { flex: 1; display: grid; place-items: center; padding: clamp(48px,8vh,110px) 0 38px; }
-    .time-block { width: 100%; text-align: center; }
-    .orbit-label { margin-bottom: clamp(22px,4vh,48px); display: flex; justify-content: center; align-items: center; gap: 16px; color: var(--dim); font-size: .68rem; font-weight: 850; letter-spacing: .27em; text-transform: uppercase; }
-    .orbit-label::before, .orbit-label::after { content: ""; width: clamp(35px,6vw,86px); height: 1px; background: linear-gradient(90deg,transparent,rgba(255,255,255,.4)); }
-    .orbit-label::after { transform: scaleX(-1); }
-    .clock { position: relative; display: inline-flex; align-items: flex-end; justify-content: center; font-variant-numeric: tabular-nums; font-feature-settings: "tnum" 1; white-space: nowrap; filter: drop-shadow(0 18px 36px rgba(0,0,0,.28)); }
-    .clock::before { content: ""; position: absolute; z-index: -1; left: 10%; right: 10%; bottom: 7%; height: 22%; border-radius: 50%; background: var(--accent); opacity: .22; filter: blur(48px); transform: scaleX(.8); }
-    .clock-main { font-size: clamp(5.5rem,16vw,15.5rem); font-weight: 780; line-height: .72; letter-spacing: -.095em; text-shadow: 0 1px 0 rgba(255,255,255,.24); }
-    .clock-cs { min-width: 1.8em; margin-left: .17em; padding-bottom: .02em; color: var(--accent); font-size: clamp(2.2rem,5vw,5.2rem); font-weight: 760; line-height: .8; letter-spacing: -.05em; transition: color .7s linear; }
-    .second-track { width: min(560px,70%); height: 3px; margin: clamp(35px,6vh,70px) auto 0; border-radius: 99px; background: rgba(255,255,255,.1); overflow: hidden; }
-    .second-fill { width: 0; height: 100%; border-radius: inherit; background: linear-gradient(90deg,var(--accent),var(--accent-2)); box-shadow: 0 0 18px var(--accent); transition: background .7s linear; }
-    .controls-row { display: flex; justify-content: center; align-items: center; gap: 12px; }
-    .control { border: 1px solid rgba(255,255,255,.16); color: var(--ink); background: rgba(9,7,22,.38); backdrop-filter: blur(18px) saturate(140%); cursor: pointer; transition: transform .18s ease,background .18s ease,border-color .18s ease,opacity .18s ease; touch-action: manipulation; }
-    .control:hover:not(:disabled) { transform: translateY(-3px); border-color: rgba(255,255,255,.34); }
-    .control:active:not(:disabled) { transform: translateY(0) scale(.97); }
-    .control:focus-visible { outline: 3px solid var(--lime); outline-offset: 4px; }
-    .control:disabled { opacity: .28; cursor: not-allowed; }
-    .control-main { min-width: 190px; min-height: 64px; padding: 0 34px; border: 0; border-radius: 999px; background: var(--ink); color: #100d1f; font-weight: 850; font-size: 1rem; letter-spacing: .02em; box-shadow: 0 14px 40px rgba(0,0,0,.25),0 0 0 0 var(--accent); }
-    .running .control-main { background: var(--lime); box-shadow: 0 14px 40px rgba(0,0,0,.25),0 0 44px rgba(237,255,133,.17); }
-    .control-round { width: 64px; height: 64px; padding: 0; border-radius: 50%; display: grid; place-items: center; }
-    .control svg { width: 21px; height: 21px; }
-    .keyline { margin-top: 22px; display: flex; justify-content: center; gap: 19px; color: rgba(255,255,255,.38); font-size: .72rem; }
-    kbd { margin-right: 5px; color: rgba(255,255,255,.65); font: 800 .68rem/1 system-ui,sans-serif; }
-    .laps { position: relative; min-height: 100svh; padding: clamp(22px,3.2vw,50px) clamp(20px,2.4vw,34px); display: flex; flex-direction: column; border-left: 1px solid rgba(255,255,255,.1); background: linear-gradient(180deg,rgba(8,7,17,.28),rgba(8,7,17,.58)); backdrop-filter: blur(24px) saturate(130%); }
-    .laps::before { content: ""; position: absolute; top: 0; left: -1px; width: 1px; height: 32%; background: linear-gradient(var(--accent),transparent); box-shadow: 0 0 16px var(--accent); transition: background .7s linear; }
-    .laps-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding-bottom: 22px; border-bottom: 1px solid rgba(255,255,255,.1); }
-    .laps-title { margin: 0; font-size: .8rem; font-weight: 850; letter-spacing: .18em; text-transform: uppercase; }
-    .lap-count { color: var(--dim); font-size: .75rem; font-variant-numeric: tabular-nums; }
-    .laps-list { list-style: none; margin: 12px -8px 0; padding: 0 8px 20px; display: flex; flex-direction: column; overflow-y: auto; scrollbar-width: thin; scrollbar-color: rgba(255,255,255,.24) transparent; }
-    .lap { display: grid; grid-template-columns: 38px 1fr auto; align-items: center; gap: 12px; min-height: 70px; border-bottom: 1px dotted rgba(255,255,255,.15); animation: rise .26s ease both; }
-    .lap-dot { width: 26px; height: 26px; display: grid; place-items: center; border: 1px solid rgba(255,255,255,.18); border-radius: 50%; color: var(--dim); font-size: .65rem; font-weight: 800; }
-    .lap-total { font-size: .98rem; font-weight: 720; font-variant-numeric: tabular-nums; }
-    .lap-split { color: var(--dim); font-size: .72rem; font-variant-numeric: tabular-nums; }
-    .empty { margin: auto 0; text-align: center; color: rgba(255,255,255,.42); font-size: .82rem; line-height: 1.7; }
-    .empty-dots { width: 62px; margin: 0 auto 17px; display: grid; grid-template-columns: repeat(5,1fr); gap: 7px; }
-    .empty-dots i { aspect-ratio: 1; border-radius: 50%; background: rgba(255,255,255,.16); }
-    .empty-dots i:nth-child(3) { background: var(--accent); box-shadow: 0 0 16px var(--accent); }
-    @keyframes rise { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
-    @media (max-width:820px) { body { overflow-y:auto; } .app { grid-template-columns:1fr; } .stage { min-height:74svh; padding:22px 20px 26px; } .time-space { padding:70px 0 48px; } .clock-main { font-size:clamp(4.4rem,23vw,8rem); } .clock-cs { font-size:clamp(1.7rem,8vw,3rem); } .second-track { width:72%; margin-top:38px; } .laps { min-height:26svh; max-height:48svh; border-left:0; border-top:1px solid rgba(255,255,255,.1); } .laps::before { top:-1px; left:0; width:40%; height:1px; background:linear-gradient(90deg,var(--accent),transparent); } .laps-list { max-height:250px; } .empty { padding:35px 0; } }
-    @media (max-width:470px) { .identity { font-size:.75rem; } .mode { padding:8px 10px; font-size:.62rem; } .orbit-label { font-size:.58rem; gap:10px; } .clock-main { font-size:4.2rem; } .clock-cs { font-size:1.65rem; } .control-main { min-width:155px; min-height:58px; } .control-round { width:58px; height:58px; } .keyline { display:none; } }
-    @media (prefers-reduced-motion:reduce) { *,*::before,*::after { animation-duration:.01ms!important; transition-duration:.01ms!important; } }
+
+    .stars { position: fixed; inset: 0; pointer-events: none; opacity: .35; background-image: radial-gradient(circle, white 1px, transparent 1.5px); background-size: 34px 34px; mask-image: linear-gradient(to bottom, black, transparent 75%); }
+
+    .app {
+      position: relative;
+      min-height: 100svh;
+      padding: clamp(18px, 2vw, 32px);
+      display: grid;
+      grid-template-columns: minmax(250px, .78fr) auto minmax(240px, .68fr);
+      gap: clamp(16px, 2vw, 32px);
+      align-items: stretch;
+    }
+
+    .hud,
+    .side-panel,
+    .board-shell { border: 1px solid var(--stroke); box-shadow: 0 22px 70px rgba(5,3,28,.4); }
+
+    .hud {
+      min-width: 0;
+      padding: clamp(22px, 3vw, 42px);
+      border-radius: 32px;
+      background: linear-gradient(160deg, rgba(75,53,151,.7), rgba(22,15,61,.74));
+      backdrop-filter: blur(20px);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .brand { display: flex; align-items: center; gap: 11px; font-weight: 900; letter-spacing: .08em; text-transform: uppercase; }
+    .brand-bubbles { display: flex; align-items: flex-end; }
+    .brand-bubbles i { display: block; width: 14px; height: 14px; border-radius: 50%; background: var(--pink); box-shadow: inset 3px 3px 0 rgba(255,255,255,.45); }
+    .brand-bubbles i:nth-child(2) { width: 10px; height: 10px; margin-left: -3px; background: var(--blue); }
+
+    .score-label { margin: auto 0 12px; color: rgba(255,255,255,.55); font-size: .72rem; font-weight: 900; letter-spacing: .2em; text-transform: uppercase; }
+    .time { display: flex; align-items: flex-end; font-variant-numeric: tabular-nums; line-height: .8; white-space: nowrap; }
+    .time-main { font-size: clamp(4rem, 8.2vw, 8.5rem); font-weight: 900; letter-spacing: -.09em; }
+    .time-cs { min-width: 1.65em; margin-left: .15em; color: var(--yellow); font-size: clamp(1.7rem, 3vw, 3.2rem); font-weight: 900; }
+
+    .level-row { margin-top: 25px; display: flex; gap: 8px; flex-wrap: wrap; }
+    .badge { padding: 8px 11px; border-radius: 11px; background: rgba(0,0,0,.18); color: rgba(255,255,255,.72); font-size: .72rem; font-weight: 800; }
+    .badge strong { color: white; }
+
+    .controls { margin-top: 30px; display: grid; grid-template-columns: 1fr auto auto; gap: 9px; }
+    .btn { min-height: 58px; border: 1px solid var(--stroke); border-radius: 17px; color: white; background: rgba(8,5,35,.32); cursor: pointer; transition: transform .18s, opacity .18s, background .18s; touch-action: manipulation; }
+    .btn:hover:not(:disabled) { transform: translateY(-3px); background: rgba(255,255,255,.12); }
+    .btn:active:not(:disabled) { transform: scale(.97); }
+    .btn:focus-visible { outline: 3px solid var(--yellow); outline-offset: 3px; }
+    .btn:disabled { opacity: .27; cursor: not-allowed; }
+    .btn-main { padding: 0 24px; color: var(--dark); background: var(--yellow); border-color: transparent; font-weight: 950; box-shadow: 0 8px 0 #c98c34, 0 15px 32px rgba(255,230,106,.14); }
+    .btn-main:hover:not(:disabled) { background: #fff29b; }
+    .running .btn-main { color: white; background: var(--pink); box-shadow: 0 8px 0 #a32967, 0 15px 32px rgba(255,92,168,.18); }
+    .btn-icon { width: 58px; display: grid; place-items: center; }
+    .btn svg { width: 21px; height: 21px; }
+    .hint { margin-top: 20px; color: rgba(255,255,255,.42); font-size: .72rem; line-height: 1.7; }
+
+    .game { display: grid; place-items: center; min-width: calc(var(--cell) * 6 + var(--gap) * 7 + 32px); }
+    .board-wrap { position: relative; }
+    .board-top { display: flex; align-items: flex-end; justify-content: space-between; padding: 0 8px 12px; }
+    .board-title { margin: 0; font-size: .84rem; font-weight: 950; letter-spacing: .16em; text-transform: uppercase; }
+    .status { color: var(--yellow); font-size: .72rem; font-weight: 900; letter-spacing: .08em; text-transform: uppercase; }
+
+    .board-shell { position: relative; padding: 16px; border-radius: 34px; background: linear-gradient(180deg, rgba(9,7,38,.84), rgba(29,18,78,.92)); overflow: hidden; }
+    .board {
+      position: relative;
+      width: calc(var(--cell) * 6 + var(--gap) * 5);
+      height: calc(var(--cell) * 10 + var(--gap) * 9);
+      border-radius: 21px;
+      background-image: radial-gradient(circle, rgba(255,255,255,.08) 0 2px, transparent 2.5px);
+      background-size: calc(var(--cell) + var(--gap)) calc(var(--cell) + var(--gap));
+      background-position: calc(var(--cell) / 2) calc(var(--cell) / 2);
+      box-shadow: inset 0 0 0 2px rgba(255,255,255,.05), inset 0 -30px 55px rgba(89,57,189,.18);
+    }
+
+    .jelly {
+      position: absolute;
+      width: var(--cell);
+      height: var(--cell);
+      left: calc(var(--col) * (var(--cell) + var(--gap)));
+      bottom: calc(var(--row) * (var(--cell) + var(--gap)));
+      border-radius: 48% 52% 46% 54% / 55% 47% 53% 45%;
+      background: var(--color);
+      box-shadow: inset 8px 10px 0 rgba(255,255,255,.22), inset -7px -9px 0 rgba(25,14,70,.18), 0 5px 0 rgba(4,2,28,.3), 0 8px 16px rgba(5,2,30,.2);
+      animation: drop .55s cubic-bezier(.2,.9,.24,1.25) both;
+      animation-delay: calc(var(--delay) * 18ms);
+    }
+    .jelly::before { content: ""; position: absolute; width: 13%; height: 13%; left: 25%; top: 25%; border-radius: 50%; background: white; opacity: .85; }
+    .jelly::after { content: ""; position: absolute; width: 8%; height: 8%; left: 54%; top: 48%; border-radius: 50%; background: rgba(23,14,65,.7); box-shadow: calc(var(--cell) * -.16) 0 0 rgba(23,14,65,.7); }
+    .jelly.pop { animation: chain .65s ease both; }
+
+    .combo {
+      position: absolute;
+      z-index: 10;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      pointer-events: none;
+      opacity: 0;
+      transform: scale(.6) rotate(-5deg);
+      color: var(--yellow);
+      font-size: clamp(2.2rem, 5vw, 4.6rem);
+      font-weight: 1000;
+      letter-spacing: -.06em;
+      text-align: center;
+      text-shadow: 0 5px 0 #8a397c, 0 0 28px rgba(255,230,106,.65);
+    }
+    .combo.show { animation: combo .95s ease both; }
+    .combo small { display: block; margin-top: 8px; color: white; font-size: .8rem; letter-spacing: .14em; text-shadow: none; }
+
+    .next-box { position: absolute; top: 68px; right: -72px; width: 58px; padding: 8px 6px; border: 1px solid var(--stroke); border-radius: 15px; background: var(--panel); text-align: center; box-shadow: 0 12px 28px rgba(0,0,0,.25); }
+    .next-label { margin-bottom: 7px; color: rgba(255,255,255,.55); font-size: .55rem; font-weight: 900; letter-spacing: .12em; }
+    .next-jelly { width: 36px; height: 36px; margin: 0 auto; border-radius: 48% 52% 46% 54%; background: var(--next-color,var(--pink)); box-shadow: inset 6px 7px 0 rgba(255,255,255,.22), 0 4px 0 rgba(0,0,0,.22); }
+
+    .side-panel { min-width: 0; padding: clamp(22px,2.4vw,34px); border-radius: 32px; background: linear-gradient(170deg,rgba(25,19,76,.72),rgba(14,10,46,.76)); backdrop-filter: blur(20px); display: flex; flex-direction: column; }
+    .side-head { display: flex; align-items: center; justify-content: space-between; padding-bottom: 17px; border-bottom: 1px solid var(--stroke); }
+    .side-title { margin: 0; font-size: .82rem; font-weight: 950; letter-spacing: .15em; text-transform: uppercase; }
+    .lap-count { display: grid; place-items: center; min-width: 30px; height: 24px; padding: 0 8px; border-radius: 999px; color: var(--dark); background: var(--mint); font-size: .7rem; font-weight: 950; }
+    .laps { list-style: none; margin: 10px -5px 0; padding: 0 5px 20px; overflow-y: auto; scrollbar-width: thin; scrollbar-color: rgba(255,255,255,.2) transparent; }
+    .lap { display: grid; grid-template-columns: 30px 1fr; gap: 10px; align-items: center; min-height: 66px; border-bottom: 1px dashed rgba(255,255,255,.13); animation: slide .25s ease both; }
+    .lap-no { color: var(--yellow); font-size: .72rem; font-weight: 950; }
+    .lap-total { font-variant-numeric: tabular-nums; font-size: .96rem; font-weight: 850; }
+    .lap-split { margin-top: 4px; color: rgba(255,255,255,.46); font-size: .7rem; font-variant-numeric: tabular-nums; }
+    .empty { margin: auto 0; text-align: center; color: rgba(255,255,255,.42); font-size: .78rem; line-height: 1.7; }
+    .empty-jelly { width: 58px; height: 48px; margin: 0 auto 15px; border: 2px dashed rgba(255,255,255,.18); border-radius: 50%; display: grid; place-items: center; color: rgba(255,255,255,.34); font-size: 1.4rem; }
+
+    @keyframes drop { from { transform: translateY(calc(-1 * (100svh + var(--row) * var(--cell)))) rotate(9deg); } 72% { transform: translateY(5px) scaleY(.88) scaleX(1.08); } to { transform: none; } }
+    @keyframes chain { 0%,100% { transform: none; filter: brightness(1); } 45% { transform: translateY(-8px) scale(1.13); filter: brightness(1.5); } }
+    @keyframes combo { 0% { opacity:0; transform:scale(.55) rotate(-7deg); } 25%,65% { opacity:1; transform:scale(1) rotate(-2deg); } 100% { opacity:0; transform:scale(1.18) rotate(3deg); } }
+    @keyframes slide { from { opacity:0; transform:translateX(8px); } to { opacity:1; transform:none; } }
+
+    @media (max-width: 1040px) {
+      .app { grid-template-columns: minmax(230px,.72fr) auto; }
+      .side-panel { grid-column: 1 / -1; min-height: 190px; }
+      .laps { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 0 18px; max-height: 150px; }
+    }
+    @media (max-width: 560px) {
+      :root { --cell: clamp(36px,12vw,54px); --gap: 5px; }
+      .app { padding: 12px; grid-template-columns: 1fr; gap: 12px; }
+      .hud { min-height: auto; border-radius: 24px; padding: 22px; }
+      .score-label { margin-top: 42px; }
+      .game { min-width: 0; }
+      .board-shell { padding: 12px; border-radius: 26px; }
+      .next-box { right: 8px; top: -54px; }
+      .side-panel { grid-column: auto; border-radius: 24px; min-height: 210px; }
+      .laps { grid-template-columns: 1fr; max-height: 210px; }
+      .hint { display: none; }
+    }
+    @media (max-width: 390px) {
+      :root { --cell: 34px; --gap: 4px; }
+      .time-main { font-size: 3.5rem; }
+      .controls { grid-template-columns: 1fr 52px 52px; }
+      .btn { min-height: 52px; }
+      .btn-icon { width: 52px; }
+    }
+    @media (prefers-reduced-motion: reduce) { *,*::before,*::after { animation-duration:.01ms!important; animation-delay:0ms!important; transition-duration:.01ms!important; } }
   </style>
 </head>
 <body>
-  <canvas id="dotField" aria-hidden="true"></canvas><div class="noise" aria-hidden="true"></div>
+  <div class="stars" aria-hidden="true"></div>
   <main class="app" id="app">
-    <section class="stage" aria-labelledby="pageTitle">
-      <header class="topbar"><div class="identity" id="pageTitle"><span class="logo-grid" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span>Dot / Time</span></div><div class="mode" aria-live="polite"><span class="pulse" aria-hidden="true"></span><span id="statusText">Ready</span></div></header>
-      <div class="time-space"><div class="time-block"><div class="orbit-label">Elapsed spectrum</div><div class="clock" role="timer" aria-label="경과 시간"><span class="clock-main" id="timeMain">00:00</span><span class="clock-cs" id="timeCs">.00</span></div><div class="second-track" aria-hidden="true"><div class="second-fill" id="secondFill"></div></div></div></div>
-      <div class="controls-row">
-        <button class="control control-round" id="lapBtn" type="button" aria-label="랩 기록" title="랩 기록" disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 8v8M8 12h8" stroke-linecap="round"/></svg></button>
-        <button class="control control-main" id="toggleBtn" type="button">시작</button>
-        <button class="control control-round" id="resetBtn" type="button" aria-label="초기화" title="초기화" disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.34 5.66M20 4v7h-7" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+    <section class="hud" aria-labelledby="title">
+      <header class="brand" id="title"><span class="brand-bubbles" aria-hidden="true"><i></i><i></i></span><span>Jelly Time</span></header>
+      <p class="score-label">Time score</p>
+      <div class="time" role="timer" aria-label="경과 시간"><span class="time-main" id="timeMain">00:00</span><span class="time-cs" id="timeCs">.00</span></div>
+      <div class="level-row"><span class="badge">LEVEL <strong id="level">01</strong></span><span class="badge">STACK <strong id="stackCount">00</strong>/60</span></div>
+      <div class="controls">
+        <button class="btn btn-main" id="toggleBtn" type="button">게임 시작</button>
+        <button class="btn btn-icon" id="lapBtn" type="button" aria-label="랩 기록" title="랩 기록" disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M5 4v16M5 5h10l-2 4 2 4H5" stroke-linejoin="round" stroke-linecap="round"/></svg></button>
+        <button class="btn btn-icon" id="resetBtn" type="button" aria-label="초기화" title="초기화" disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.34 5.66M20 4v7h-7" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
       </div>
-      <div class="keyline" aria-label="키보드 단축키"><span><kbd>SPACE</kbd>시작 / 정지</span><span><kbd>L</kbd>랩</span><span><kbd>R</kbd>초기화</span></div>
+      <p class="hint">매초 타임 젤리가 하나씩 쌓여요.<br>10초마다 작은 연쇄, 60초마다 레벨 업!</p>
     </section>
-    <aside class="laps" aria-labelledby="lapsTitle"><header class="laps-head"><h2 class="laps-title" id="lapsTitle">Lap archive</h2><span class="lap-count" id="lapCount">00</span></header><ol class="laps-list" id="lapsList"></ol><div class="empty" id="emptyState"><div class="empty-dots" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>랩을 기록하면<br>시간의 조각이 쌓입니다.</div></aside>
+
+    <section class="game" aria-labelledby="boardTitle">
+      <div class="board-wrap">
+        <div class="board-top"><h2 class="board-title" id="boardTitle">Time stack</h2><span class="status" id="statusText" aria-live="polite">Ready!</span></div>
+        <div class="board-shell">
+          <div class="board" id="board" aria-label="초 단위 시간 젤리 게임판"></div>
+          <div class="combo" id="combo" aria-live="polite"></div>
+        </div>
+        <div class="next-box" aria-hidden="true"><div class="next-label">NEXT</div><div class="next-jelly" id="nextJelly"></div></div>
+      </div>
+    </section>
+
+    <aside class="side-panel" aria-labelledby="lapTitle">
+      <header class="side-head"><h2 class="side-title" id="lapTitle">Lap pocket</h2><span class="lap-count" id="lapCount">0</span></header>
+      <ol class="laps" id="lapsList"></ol>
+      <div class="empty" id="emptyState"><div class="empty-jelly" aria-hidden="true">?</div>랩 버튼을 누르면<br>기록 젤리가 여기에 저장돼요.</div>
+    </aside>
   </main>
+
   <script>
     (() => {
-      const root=document.documentElement,app=document.getElementById('app'),timeMain=document.getElementById('timeMain'),timeCs=document.getElementById('timeCs'),secondFill=document.getElementById('secondFill'),toggleBtn=document.getElementById('toggleBtn'),lapBtn=document.getElementById('lapBtn'),resetBtn=document.getElementById('resetBtn'),statusText=document.getElementById('statusText'),lapsList=document.getElementById('lapsList'),lapCount=document.getElementById('lapCount'),emptyState=document.getElementById('emptyState'),canvas=document.getElementById('dotField'),context=canvas.getContext('2d'),reduceMotion=matchMedia('(prefers-reduced-motion: reduce)').matches;
-      let running=false,startedAt=0,elapsed=0,frameId=0,laps=[],width=0,height=0,dpr=1;
-      const nowElapsed=()=>running?elapsed+performance.now()-startedAt:elapsed;
-      function split(ms){const centiseconds=Math.floor(ms/10),cs=centiseconds%100,totalSeconds=Math.floor(centiseconds/100),seconds=totalSeconds%60,totalMinutes=Math.floor(totalSeconds/60),minutes=totalMinutes%60,hours=Math.floor(totalMinutes/60);return{hours,minutes,seconds,cs};}
-      function format(ms,withCs=false){const p=split(ms),hours=p.hours?`${String(p.hours).padStart(2,'0')}:`:'';return`${hours}${String(p.minutes).padStart(2,'0')}:${String(p.seconds).padStart(2,'0')}${withCs?'.'+String(p.cs).padStart(2,'0'):''}`;}
-      function palette(ms){const cycle=ms/1000%60,hue=(260+cycle*4.8)%360;root.style.setProperty('--hue',hue.toFixed(1));root.style.setProperty('--hue-next',((hue+62)%360).toFixed(1));root.style.setProperty('--drift-x',`${Math.sin(ms/6800)*7}%`);root.style.setProperty('--drift-y',`${Math.cos(ms/8300)*5}%`);return hue;}
-      function paint(ms){const p=split(ms);timeMain.textContent=`${p.hours?String(p.hours).padStart(2,'0')+':':''}${String(p.minutes).padStart(2,'0')}:${String(p.seconds).padStart(2,'0')}`;timeCs.textContent=`.${String(p.cs).padStart(2,'0')}`;secondFill.style.width=`${ms%60000/60000*100}%`;const hue=palette(ms);drawDots(ms,hue);}
-      function resizeCanvas(){dpr=Math.min(devicePixelRatio||1,2);width=innerWidth;height=innerHeight;canvas.width=Math.round(width*dpr);canvas.height=Math.round(height*dpr);canvas.style.width=`${width}px`;canvas.style.height=`${height}px`;context.setTransform(dpr,0,0,dpr,0,0);drawDots(nowElapsed(),palette(nowElapsed()));}
-      function drawDots(ms,hue){context.clearRect(0,0,width,height);const gap=width<600?25:31,cols=Math.ceil(width/gap)+2,rows=Math.ceil(height/gap)+2,phase=reduceMotion?0:ms/720,cx=width*(.48+Math.sin(ms/9000)*.08),cy=height*(.46+Math.cos(ms/11000)*.09);for(let row=-1;row<rows;row++){for(let col=-1;col<cols;col++){const x=col*gap+(row%2?gap/2:0),y=row*gap,distance=Math.hypot(x-cx,y-cy),wave=(Math.sin(distance/62-phase)+1)/2,edge=Math.max(0,1-distance/Math.max(width,height)*1.22),radius=.7+wave*2.15*edge,alpha=.08+wave*.26*edge;context.beginPath();context.arc(x,y,radius,0,Math.PI*2);context.fillStyle=`hsla(${(hue+distance/9)%360},100%,${68+wave*15}%,${alpha})`;context.fill();}}}
-      function loop(){paint(nowElapsed());if(running)frameId=requestAnimationFrame(loop);}
-      function syncControls(){app.classList.toggle('running',running);toggleBtn.textContent=running?'일시정지':elapsed>0?'계속':'시작';statusText.textContent=running?'In motion':elapsed>0?'Paused':'Ready';lapBtn.disabled=!running;resetBtn.disabled=elapsed===0&&!running;}
-      function toggle(){if(running){elapsed+=performance.now()-startedAt;running=false;cancelAnimationFrame(frameId);paint(elapsed);}else{startedAt=performance.now();running=true;loop();}syncControls();return getState();}
-      function reset(){running=false;cancelAnimationFrame(frameId);startedAt=0;elapsed=0;laps=[];renderLaps();paint(0);syncControls();return getState();}
-      function recordLap(){if(!running)return getState();const total=nowElapsed(),previous=laps.length?laps[laps.length-1].total:0;laps.push({total,interval:total-previous});renderLaps();return getState();}
-      function renderLaps(){lapsList.replaceChildren();[...laps].reverse().forEach((lap,index)=>{const number=laps.length-index,item=document.createElement('li'),dot=document.createElement('span'),total=document.createElement('span'),interval=document.createElement('span');item.className='lap';dot.className='lap-dot';dot.textContent=String(number).padStart(2,'0');total.className='lap-total';total.textContent=format(lap.total,true);interval.className='lap-split';interval.textContent=`+${format(lap.interval,true)}`;item.append(dot,total,interval);lapsList.appendChild(item);});lapCount.textContent=String(laps.length).padStart(2,'0');emptyState.hidden=laps.length>0;}
-      function getState(){return{running,elapsedMilliseconds:Math.round(nowElapsed()),lapCount:laps.length};}
-      toggleBtn.addEventListener('click',toggle);lapBtn.addEventListener('click',recordLap);resetBtn.addEventListener('click',reset);addEventListener('resize',resizeCanvas,{passive:true});addEventListener('keydown',event=>{if(event.repeat||event.target.matches('input, textarea, select'))return;if(event.code==='Space'||event.code==='Enter'){event.preventDefault();toggle();}if(event.key.toLowerCase()==='l'){event.preventDefault();recordLap();}if(event.key.toLowerCase()==='r'){event.preventDefault();reset();}});
-      const modelContext=document.modelContext;if(modelContext?.registerTool){const register=(name,title,description,execute)=>{try{void Promise.resolve(modelContext.registerTool({name,title,description,inputSchema:{type:'object',properties:{},additionalProperties:false},annotations:{readOnlyHint:false,untrustedContentHint:false},execute})).catch(()=>{});}catch(_){}};register('toggle_stopwatch','스탑워치 시작 또는 일시정지','현재 상태에 따라 스탑워치를 시작하거나 일시정지합니다.',toggle);register('record_lap','랩 기록','실행 중인 스탑워치에 현재 랩 기록을 추가합니다.',recordLap);register('reset_stopwatch','스탑워치 초기화','경과 시간과 모든 랩 기록을 초기화합니다.',reset);}
-      resizeCanvas();renderLaps();syncControls();paint(0);
+      const colors=['#ff5ca8','#ffe66a','#5fe2ff','#74f7b8','#9a78ff','#ff9657'];
+      const app=document.getElementById('app'),timeMain=document.getElementById('timeMain'),timeCs=document.getElementById('timeCs'),levelEl=document.getElementById('level'),stackCount=document.getElementById('stackCount'),toggleBtn=document.getElementById('toggleBtn'),lapBtn=document.getElementById('lapBtn'),resetBtn=document.getElementById('resetBtn'),statusText=document.getElementById('statusText'),board=document.getElementById('board'),combo=document.getElementById('combo'),nextJelly=document.getElementById('nextJelly'),lapsList=document.getElementById('lapsList'),lapCount=document.getElementById('lapCount'),emptyState=document.getElementById('emptyState');
+      let running=false,startedAt=0,elapsed=0,animationId=0,laps=[],renderedSecond=-1,comboTimer=0;
+      const currentElapsed=()=>running?elapsed+performance.now()-startedAt:elapsed;
+
+      function split(ms){const cs=Math.floor(ms/10),centis=cs%100,totalSeconds=Math.floor(cs/100),seconds=totalSeconds%60,totalMinutes=Math.floor(totalSeconds/60),minutes=totalMinutes%60,hours=Math.floor(totalMinutes/60);return{hours,minutes,seconds,centis,totalSeconds,totalMinutes};}
+      function format(ms,withCentis=false){const p=split(ms),h=p.hours?`${String(p.hours).padStart(2,'0')}:`:'';return`${h}${String(p.minutes).padStart(2,'0')}:${String(p.seconds).padStart(2,'0')}${withCentis?'.'+String(p.centis).padStart(2,'0'):''}`;}
+      function columnFor(second){return ((second-1)*5+Math.floor((second-1)/6)*2)%6;}
+
+      function paint(ms){const p=split(ms);timeMain.textContent=`${p.hours?String(p.hours).padStart(2,'0')+':':''}${String(p.minutes).padStart(2,'0')}:${String(p.seconds).padStart(2,'0')}`;timeCs.textContent=`.${String(p.centis).padStart(2,'0')}`;levelEl.textContent=String(p.totalMinutes+1).padStart(2,'0');const sec=p.totalSeconds%60;stackCount.textContent=String(sec).padStart(2,'0');nextJelly.style.setProperty('--next-color',colors[(p.totalSeconds+1)%colors.length]);if(p.totalSeconds!==renderedSecond){renderBoard(sec,p.totalSeconds);renderedSecond=p.totalSeconds;}}
+
+      function renderBoard(seconds,totalSeconds){board.replaceChildren();const counts=[0,0,0,0,0,0];for(let second=1;second<=seconds;second++){const col=columnFor(second),row=counts[col]++,piece=document.createElement('span');piece.className='jelly';piece.style.setProperty('--col',col);piece.style.setProperty('--row',row);piece.style.setProperty('--delay',Math.max(0,second-seconds+3));piece.style.setProperty('--color',colors[(second+Math.floor(totalSeconds/60)*2)%colors.length]);if(seconds>0&&seconds%10===0&&second>seconds-6)piece.classList.add('pop');board.appendChild(piece);}if(seconds>0&&seconds%10===0)showCombo(seconds);if(seconds===0&&totalSeconds>0)showLevelUp(Math.floor(totalSeconds/60)+1);}
+
+      function hideCombo(){combo.classList.remove('show');combo.replaceChildren();}
+      function showCombo(seconds){clearTimeout(comboTimer);combo.innerHTML=`${seconds/10} CHAIN!<small>${seconds}초가 찰랑찰랑</small>`;combo.classList.remove('show');void combo.offsetWidth;combo.classList.add('show');comboTimer=setTimeout(hideCombo,1000);}
+      function showLevelUp(level){clearTimeout(comboTimer);combo.innerHTML=`LEVEL ${String(level).padStart(2,'0')}<small>1분 완성!</small>`;combo.classList.remove('show');void combo.offsetWidth;combo.classList.add('show');comboTimer=setTimeout(hideCombo,1100);}
+
+      function frame(){paint(currentElapsed());if(running)animationId=requestAnimationFrame(frame);}
+      function syncControls(){app.classList.toggle('running',running);toggleBtn.textContent=running?'잠깐 멈춤':elapsed>0?'이어서 쌓기':'게임 시작';statusText.textContent=running?'Stacking!':elapsed>0?'Paused':'Ready!';lapBtn.disabled=!running;resetBtn.disabled=elapsed===0&&!running;}
+      function toggle(){if(running){elapsed+=performance.now()-startedAt;running=false;cancelAnimationFrame(animationId);paint(elapsed);}else{startedAt=performance.now();running=true;frame();}syncControls();return state();}
+      function reset(){running=false;cancelAnimationFrame(animationId);clearTimeout(comboTimer);hideCombo();startedAt=0;elapsed=0;laps=[];renderedSecond=-1;renderLaps();paint(0);syncControls();return state();}
+      function addLap(){if(!running)return state();const total=currentElapsed(),previous=laps.length?laps[laps.length-1].total:0;laps.push({total,split:total-previous});renderLaps();return state();}
+      function renderLaps(){lapsList.replaceChildren();[...laps].reverse().forEach((lap,index)=>{const item=document.createElement('li'),num=document.createElement('span'),text=document.createElement('div'),total=document.createElement('div'),splitEl=document.createElement('div');item.className='lap';num.className='lap-no';num.textContent=`#${String(laps.length-index).padStart(2,'0')}`;total.className='lap-total';total.textContent=format(lap.total,true);splitEl.className='lap-split';splitEl.textContent=`구간 +${format(lap.split,true)}`;text.append(total,splitEl);item.append(num,text);lapsList.appendChild(item);});lapCount.textContent=laps.length;emptyState.hidden=laps.length>0;}
+      function state(){return{running,elapsedMilliseconds:Math.round(currentElapsed()),lapCount:laps.length,stackedSeconds:split(currentElapsed()).totalSeconds%60};}
+
+      toggleBtn.addEventListener('click',toggle);lapBtn.addEventListener('click',addLap);resetBtn.addEventListener('click',reset);addEventListener('keydown',event=>{if(event.repeat||event.target.matches('input,textarea,select'))return;if(event.code==='Space'||event.code==='Enter'){event.preventDefault();toggle();}if(event.key.toLowerCase()==='l'){event.preventDefault();addLap();}if(event.key.toLowerCase()==='r'){event.preventDefault();reset();}});
+      const context=document.modelContext;if(context?.registerTool){const register=(name,title,description,execute)=>{try{void Promise.resolve(context.registerTool({name,title,description,inputSchema:{type:'object',properties:{},additionalProperties:false},annotations:{readOnlyHint:false,untrustedContentHint:false},execute})).catch(()=>{});}catch(_){}};register('toggle_stopwatch','스탑워치 시작 또는 일시정지','타임 젤리를 쌓기 시작하거나 일시정지합니다.',toggle);register('record_lap','랩 기록','실행 중인 스탑워치에 랩 기록을 추가합니다.',addLap);register('reset_stopwatch','스탑워치 초기화','시간, 젤리 보드, 랩 기록을 모두 초기화합니다.',reset);}
+      renderLaps();syncControls();paint(0);
     })();
   </script>
 </body>

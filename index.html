@@ -1,0 +1,266 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#17113f">
+  <meta name="description" content="매초 타임 젤리가 쌓이는 게임형 스탑워치">
+  <title>JELLY TIME — 게임 스탑워치</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%2317113f'/%3E%3Ccircle cx='24' cy='34' r='14' fill='%23ff5ca8'/%3E%3Ccircle cx='43' cy='25' r='10' fill='%235fe2ff'/%3E%3Ccircle cx='20' cy='29' r='3' fill='white'/%3E%3Ccircle cx='39' cy='21' r='2.5' fill='white'/%3E%3C/svg%3E">
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #17113f;
+      --ink: #fffdf2;
+      --dark: #22194e;
+      --yellow: #ffe66a;
+      --pink: #ff5ca8;
+      --blue: #5fe2ff;
+      --mint: #74f7b8;
+      --purple: #9a78ff;
+      --orange: #ff9657;
+      --panel: rgba(24, 17, 66, .78);
+      --stroke: rgba(255,255,255,.16);
+      --cell: clamp(38px, 5.2vw, 66px);
+      --gap: clamp(4px, .55vw, 8px);
+    }
+
+    * { box-sizing: border-box; }
+    html, body { min-height: 100%; }
+    body {
+      margin: 0;
+      min-height: 100svh;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 14% 10%, rgba(154,120,255,.34), transparent 28rem),
+        radial-gradient(circle at 88% 82%, rgba(255,92,168,.22), transparent 32rem),
+        linear-gradient(145deg, #110d31, #20134b 48%, #0d1738);
+      font-family: Inter, Pretendard, "Noto Sans KR", system-ui, sans-serif;
+      overflow-x: hidden;
+    }
+
+    button { font: inherit; }
+
+    .stars { position: fixed; inset: 0; pointer-events: none; opacity: .35; background-image: radial-gradient(circle, white 1px, transparent 1.5px); background-size: 34px 34px; mask-image: linear-gradient(to bottom, black, transparent 75%); }
+
+    .app {
+      position: relative;
+      min-height: 100svh;
+      padding: clamp(18px, 2vw, 32px);
+      display: grid;
+      grid-template-columns: minmax(250px, .78fr) auto minmax(240px, .68fr);
+      gap: clamp(16px, 2vw, 32px);
+      align-items: stretch;
+    }
+
+    .hud,
+    .side-panel,
+    .board-shell { border: 1px solid var(--stroke); box-shadow: 0 22px 70px rgba(5,3,28,.4); }
+
+    .hud {
+      min-width: 0;
+      padding: clamp(22px, 3vw, 42px);
+      border-radius: 32px;
+      background: linear-gradient(160deg, rgba(75,53,151,.7), rgba(22,15,61,.74));
+      backdrop-filter: blur(20px);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .brand { display: flex; align-items: center; gap: 11px; font-weight: 900; letter-spacing: .08em; text-transform: uppercase; }
+    .brand-bubbles { display: flex; align-items: flex-end; }
+    .brand-bubbles i { display: block; width: 14px; height: 14px; border-radius: 50%; background: var(--pink); box-shadow: inset 3px 3px 0 rgba(255,255,255,.45); }
+    .brand-bubbles i:nth-child(2) { width: 10px; height: 10px; margin-left: -3px; background: var(--blue); }
+
+    .score-label { margin: auto 0 12px; color: rgba(255,255,255,.55); font-size: .72rem; font-weight: 900; letter-spacing: .2em; text-transform: uppercase; }
+    .time { display: flex; align-items: flex-end; font-variant-numeric: tabular-nums; line-height: .8; white-space: nowrap; }
+    .time-main { font-size: clamp(4rem, 8.2vw, 8.5rem); font-weight: 900; letter-spacing: -.09em; }
+    .time-cs { min-width: 1.65em; margin-left: .15em; color: var(--yellow); font-size: clamp(1.7rem, 3vw, 3.2rem); font-weight: 900; }
+
+    .level-row { margin-top: 25px; display: flex; gap: 8px; flex-wrap: wrap; }
+    .badge { padding: 8px 11px; border-radius: 11px; background: rgba(0,0,0,.18); color: rgba(255,255,255,.72); font-size: .72rem; font-weight: 800; }
+    .badge strong { color: white; }
+
+    .controls { margin-top: 30px; display: grid; grid-template-columns: 1fr auto auto; gap: 9px; }
+    .btn { min-height: 58px; border: 1px solid var(--stroke); border-radius: 17px; color: white; background: rgba(8,5,35,.32); cursor: pointer; transition: transform .18s, opacity .18s, background .18s; touch-action: manipulation; }
+    .btn:hover:not(:disabled) { transform: translateY(-3px); background: rgba(255,255,255,.12); }
+    .btn:active:not(:disabled) { transform: scale(.97); }
+    .btn:focus-visible { outline: 3px solid var(--yellow); outline-offset: 3px; }
+    .btn:disabled { opacity: .27; cursor: not-allowed; }
+    .btn-main { padding: 0 24px; color: var(--dark); background: var(--yellow); border-color: transparent; font-weight: 950; box-shadow: 0 8px 0 #c98c34, 0 15px 32px rgba(255,230,106,.14); }
+    .btn-main:hover:not(:disabled) { background: #fff29b; }
+    .running .btn-main { color: white; background: var(--pink); box-shadow: 0 8px 0 #a32967, 0 15px 32px rgba(255,92,168,.18); }
+    .btn-icon { width: 58px; display: grid; place-items: center; }
+    .btn svg { width: 21px; height: 21px; }
+    .hint { margin-top: 20px; color: rgba(255,255,255,.42); font-size: .72rem; line-height: 1.7; }
+
+    .game { display: grid; place-items: center; min-width: calc(var(--cell) * 6 + var(--gap) * 7 + 32px); }
+    .board-wrap { position: relative; }
+    .board-top { display: flex; align-items: flex-end; justify-content: space-between; padding: 0 8px 12px; }
+    .board-title { margin: 0; font-size: .84rem; font-weight: 950; letter-spacing: .16em; text-transform: uppercase; }
+    .status { color: var(--yellow); font-size: .72rem; font-weight: 900; letter-spacing: .08em; text-transform: uppercase; }
+
+    .board-shell { position: relative; padding: 16px; border-radius: 34px; background: linear-gradient(180deg, rgba(9,7,38,.84), rgba(29,18,78,.92)); overflow: hidden; }
+    .board {
+      position: relative;
+      width: calc(var(--cell) * 6 + var(--gap) * 5);
+      height: calc(var(--cell) * 10 + var(--gap) * 9);
+      border-radius: 21px;
+      background-image: radial-gradient(circle, rgba(255,255,255,.08) 0 2px, transparent 2.5px);
+      background-size: calc(var(--cell) + var(--gap)) calc(var(--cell) + var(--gap));
+      background-position: calc(var(--cell) / 2) calc(var(--cell) / 2);
+      box-shadow: inset 0 0 0 2px rgba(255,255,255,.05), inset 0 -30px 55px rgba(89,57,189,.18);
+    }
+
+    .jelly {
+      position: absolute;
+      width: var(--cell);
+      height: var(--cell);
+      left: calc(var(--col) * (var(--cell) + var(--gap)));
+      bottom: calc(var(--row) * (var(--cell) + var(--gap)));
+      border-radius: 48% 52% 46% 54% / 55% 47% 53% 45%;
+      background: var(--color);
+      box-shadow: inset 8px 10px 0 rgba(255,255,255,.22), inset -7px -9px 0 rgba(25,14,70,.18), 0 5px 0 rgba(4,2,28,.3), 0 8px 16px rgba(5,2,30,.2);
+      animation: drop .55s cubic-bezier(.2,.9,.24,1.25) both;
+      animation-delay: calc(var(--delay) * 18ms);
+    }
+    .jelly::before { content: ""; position: absolute; width: 13%; height: 13%; left: 25%; top: 25%; border-radius: 50%; background: white; opacity: .85; }
+    .jelly::after { content: ""; position: absolute; width: 8%; height: 8%; left: 54%; top: 48%; border-radius: 50%; background: rgba(23,14,65,.7); box-shadow: calc(var(--cell) * -.16) 0 0 rgba(23,14,65,.7); }
+    .jelly.pop { animation: chain .65s ease both; }
+
+    .combo {
+      position: absolute;
+      z-index: 10;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      pointer-events: none;
+      opacity: 0;
+      transform: scale(.6) rotate(-5deg);
+      color: var(--yellow);
+      font-size: clamp(2.2rem, 5vw, 4.6rem);
+      font-weight: 1000;
+      letter-spacing: -.06em;
+      text-align: center;
+      text-shadow: 0 5px 0 #8a397c, 0 0 28px rgba(255,230,106,.65);
+    }
+    .combo.show { animation: combo .95s ease both; }
+    .combo small { display: block; margin-top: 8px; color: white; font-size: .8rem; letter-spacing: .14em; text-shadow: none; }
+
+    .next-box { position: absolute; top: 68px; right: -72px; width: 58px; padding: 8px 6px; border: 1px solid var(--stroke); border-radius: 15px; background: var(--panel); text-align: center; box-shadow: 0 12px 28px rgba(0,0,0,.25); }
+    .next-label { margin-bottom: 7px; color: rgba(255,255,255,.55); font-size: .55rem; font-weight: 900; letter-spacing: .12em; }
+    .next-jelly { width: 36px; height: 36px; margin: 0 auto; border-radius: 48% 52% 46% 54%; background: var(--next-color,var(--pink)); box-shadow: inset 6px 7px 0 rgba(255,255,255,.22), 0 4px 0 rgba(0,0,0,.22); }
+
+    .side-panel { min-width: 0; padding: clamp(22px,2.4vw,34px); border-radius: 32px; background: linear-gradient(170deg,rgba(25,19,76,.72),rgba(14,10,46,.76)); backdrop-filter: blur(20px); display: flex; flex-direction: column; }
+    .side-head { display: flex; align-items: center; justify-content: space-between; padding-bottom: 17px; border-bottom: 1px solid var(--stroke); }
+    .side-title { margin: 0; font-size: .82rem; font-weight: 950; letter-spacing: .15em; text-transform: uppercase; }
+    .lap-count { display: grid; place-items: center; min-width: 30px; height: 24px; padding: 0 8px; border-radius: 999px; color: var(--dark); background: var(--mint); font-size: .7rem; font-weight: 950; }
+    .laps { list-style: none; margin: 10px -5px 0; padding: 0 5px 20px; overflow-y: auto; scrollbar-width: thin; scrollbar-color: rgba(255,255,255,.2) transparent; }
+    .lap { display: grid; grid-template-columns: 30px 1fr; gap: 10px; align-items: center; min-height: 66px; border-bottom: 1px dashed rgba(255,255,255,.13); animation: slide .25s ease both; }
+    .lap-no { color: var(--yellow); font-size: .72rem; font-weight: 950; }
+    .lap-total { font-variant-numeric: tabular-nums; font-size: .96rem; font-weight: 850; }
+    .lap-split { margin-top: 4px; color: rgba(255,255,255,.46); font-size: .7rem; font-variant-numeric: tabular-nums; }
+    .empty { margin: auto 0; text-align: center; color: rgba(255,255,255,.42); font-size: .78rem; line-height: 1.7; }
+    .empty-jelly { width: 58px; height: 48px; margin: 0 auto 15px; border: 2px dashed rgba(255,255,255,.18); border-radius: 50%; display: grid; place-items: center; color: rgba(255,255,255,.34); font-size: 1.4rem; }
+
+    @keyframes drop { from { transform: translateY(calc(-1 * (100svh + var(--row) * var(--cell)))) rotate(9deg); } 72% { transform: translateY(5px) scaleY(.88) scaleX(1.08); } to { transform: none; } }
+    @keyframes chain { 0%,100% { transform: none; filter: brightness(1); } 45% { transform: translateY(-8px) scale(1.13); filter: brightness(1.5); } }
+    @keyframes combo { 0% { opacity:0; transform:scale(.55) rotate(-7deg); } 25%,65% { opacity:1; transform:scale(1) rotate(-2deg); } 100% { opacity:0; transform:scale(1.18) rotate(3deg); } }
+    @keyframes slide { from { opacity:0; transform:translateX(8px); } to { opacity:1; transform:none; } }
+
+    @media (max-width: 1040px) {
+      .app { grid-template-columns: minmax(230px,.72fr) auto; }
+      .side-panel { grid-column: 1 / -1; min-height: 190px; }
+      .laps { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 0 18px; max-height: 150px; }
+    }
+    @media (max-width: 560px) {
+      :root { --cell: clamp(36px,12vw,54px); --gap: 5px; }
+      .app { padding: 12px; grid-template-columns: 1fr; gap: 12px; }
+      .hud { min-height: auto; border-radius: 24px; padding: 22px; }
+      .score-label { margin-top: 42px; }
+      .game { min-width: 0; }
+      .board-shell { padding: 12px; border-radius: 26px; }
+      .next-box { right: 8px; top: -54px; }
+      .side-panel { grid-column: auto; border-radius: 24px; min-height: 210px; }
+      .laps { grid-template-columns: 1fr; max-height: 210px; }
+      .hint { display: none; }
+    }
+    @media (max-width: 390px) {
+      :root { --cell: 34px; --gap: 4px; }
+      .time-main { font-size: 3.5rem; }
+      .controls { grid-template-columns: 1fr 52px 52px; }
+      .btn { min-height: 52px; }
+      .btn-icon { width: 52px; }
+    }
+    @media (prefers-reduced-motion: reduce) { *,*::before,*::after { animation-duration:.01ms!important; animation-delay:0ms!important; transition-duration:.01ms!important; } }
+  </style>
+</head>
+<body>
+  <div class="stars" aria-hidden="true"></div>
+  <main class="app" id="app">
+    <section class="hud" aria-labelledby="title">
+      <header class="brand" id="title"><span class="brand-bubbles" aria-hidden="true"><i></i><i></i></span><span>Jelly Time</span></header>
+      <p class="score-label">Time score</p>
+      <div class="time" role="timer" aria-label="경과 시간"><span class="time-main" id="timeMain">00:00</span><span class="time-cs" id="timeCs">.00</span></div>
+      <div class="level-row"><span class="badge">LEVEL <strong id="level">01</strong></span><span class="badge">STACK <strong id="stackCount">00</strong>/60</span></div>
+      <div class="controls">
+        <button class="btn btn-main" id="toggleBtn" type="button">게임 시작</button>
+        <button class="btn btn-icon" id="lapBtn" type="button" aria-label="랩 기록" title="랩 기록" disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M5 4v16M5 5h10l-2 4 2 4H5" stroke-linejoin="round" stroke-linecap="round"/></svg></button>
+        <button class="btn btn-icon" id="resetBtn" type="button" aria-label="초기화" title="초기화" disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.34 5.66M20 4v7h-7" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+      </div>
+      <p class="hint">매초 타임 젤리가 하나씩 쌓여요.<br>10초마다 작은 연쇄, 60초마다 레벨 업!</p>
+    </section>
+
+    <section class="game" aria-labelledby="boardTitle">
+      <div class="board-wrap">
+        <div class="board-top"><h2 class="board-title" id="boardTitle">Time stack</h2><span class="status" id="statusText" aria-live="polite">Ready!</span></div>
+        <div class="board-shell">
+          <div class="board" id="board" aria-label="초 단위 시간 젤리 게임판"></div>
+          <div class="combo" id="combo" aria-live="polite"></div>
+        </div>
+        <div class="next-box" aria-hidden="true"><div class="next-label">NEXT</div><div class="next-jelly" id="nextJelly"></div></div>
+      </div>
+    </section>
+
+    <aside class="side-panel" aria-labelledby="lapTitle">
+      <header class="side-head"><h2 class="side-title" id="lapTitle">Lap pocket</h2><span class="lap-count" id="lapCount">0</span></header>
+      <ol class="laps" id="lapsList"></ol>
+      <div class="empty" id="emptyState"><div class="empty-jelly" aria-hidden="true">?</div>랩 버튼을 누르면<br>기록 젤리가 여기에 저장돼요.</div>
+    </aside>
+  </main>
+
+  <script>
+    (() => {
+      const colors=['#ff5ca8','#ffe66a','#5fe2ff','#74f7b8','#9a78ff','#ff9657'];
+      const app=document.getElementById('app'),timeMain=document.getElementById('timeMain'),timeCs=document.getElementById('timeCs'),levelEl=document.getElementById('level'),stackCount=document.getElementById('stackCount'),toggleBtn=document.getElementById('toggleBtn'),lapBtn=document.getElementById('lapBtn'),resetBtn=document.getElementById('resetBtn'),statusText=document.getElementById('statusText'),board=document.getElementById('board'),combo=document.getElementById('combo'),nextJelly=document.getElementById('nextJelly'),lapsList=document.getElementById('lapsList'),lapCount=document.getElementById('lapCount'),emptyState=document.getElementById('emptyState');
+      let running=false,startedAt=0,elapsed=0,animationId=0,laps=[],renderedSecond=-1,comboTimer=0;
+      const currentElapsed=()=>running?elapsed+performance.now()-startedAt:elapsed;
+
+      function split(ms){const cs=Math.floor(ms/10),centis=cs%100,totalSeconds=Math.floor(cs/100),seconds=totalSeconds%60,totalMinutes=Math.floor(totalSeconds/60),minutes=totalMinutes%60,hours=Math.floor(totalMinutes/60);return{hours,minutes,seconds,centis,totalSeconds,totalMinutes};}
+      function format(ms,withCentis=false){const p=split(ms),h=p.hours?`${String(p.hours).padStart(2,'0')}:`:'';return`${h}${String(p.minutes).padStart(2,'0')}:${String(p.seconds).padStart(2,'0')}${withCentis?'.'+String(p.centis).padStart(2,'0'):''}`;}
+      function columnFor(second){return ((second-1)*5+Math.floor((second-1)/6)*2)%6;}
+
+      function paint(ms){const p=split(ms);timeMain.textContent=`${p.hours?String(p.hours).padStart(2,'0')+':':''}${String(p.minutes).padStart(2,'0')}:${String(p.seconds).padStart(2,'0')}`;timeCs.textContent=`.${String(p.centis).padStart(2,'0')}`;levelEl.textContent=String(p.totalMinutes+1).padStart(2,'0');const sec=p.totalSeconds%60;stackCount.textContent=String(sec).padStart(2,'0');nextJelly.style.setProperty('--next-color',colors[(p.totalSeconds+1)%colors.length]);if(p.totalSeconds!==renderedSecond){renderBoard(sec,p.totalSeconds);renderedSecond=p.totalSeconds;}}
+
+      function renderBoard(seconds,totalSeconds){board.replaceChildren();const counts=[0,0,0,0,0,0];for(let second=1;second<=seconds;second++){const col=columnFor(second),row=counts[col]++,piece=document.createElement('span');piece.className='jelly';piece.style.setProperty('--col',col);piece.style.setProperty('--row',row);piece.style.setProperty('--delay',Math.max(0,second-seconds+3));piece.style.setProperty('--color',colors[(second+Math.floor(totalSeconds/60)*2)%colors.length]);if(seconds>0&&seconds%10===0&&second>seconds-6)piece.classList.add('pop');board.appendChild(piece);}if(seconds>0&&seconds%10===0)showCombo(seconds);if(seconds===0&&totalSeconds>0)showLevelUp(Math.floor(totalSeconds/60)+1);}
+
+      function hideCombo(){combo.classList.remove('show');combo.replaceChildren();}
+      function showCombo(seconds){clearTimeout(comboTimer);combo.innerHTML=`${seconds/10} CHAIN!<small>${seconds}초가 찰랑찰랑</small>`;combo.classList.remove('show');void combo.offsetWidth;combo.classList.add('show');comboTimer=setTimeout(hideCombo,1000);}
+      function showLevelUp(level){clearTimeout(comboTimer);combo.innerHTML=`LEVEL ${String(level).padStart(2,'0')}<small>1분 완성!</small>`;combo.classList.remove('show');void combo.offsetWidth;combo.classList.add('show');comboTimer=setTimeout(hideCombo,1100);}
+
+      function frame(){paint(currentElapsed());if(running)animationId=requestAnimationFrame(frame);}
+      function syncControls(){app.classList.toggle('running',running);toggleBtn.textContent=running?'잠깐 멈춤':elapsed>0?'이어서 쌓기':'게임 시작';statusText.textContent=running?'Stacking!':elapsed>0?'Paused':'Ready!';lapBtn.disabled=!running;resetBtn.disabled=elapsed===0&&!running;}
+      function toggle(){if(running){elapsed+=performance.now()-startedAt;running=false;cancelAnimationFrame(animationId);paint(elapsed);}else{startedAt=performance.now();running=true;frame();}syncControls();return state();}
+      function reset(){running=false;cancelAnimationFrame(animationId);clearTimeout(comboTimer);hideCombo();startedAt=0;elapsed=0;laps=[];renderedSecond=-1;renderLaps();paint(0);syncControls();return state();}
+      function addLap(){if(!running)return state();const total=currentElapsed(),previous=laps.length?laps[laps.length-1].total:0;laps.push({total,split:total-previous});renderLaps();return state();}
+      function renderLaps(){lapsList.replaceChildren();[...laps].reverse().forEach((lap,index)=>{const item=document.createElement('li'),num=document.createElement('span'),text=document.createElement('div'),total=document.createElement('div'),splitEl=document.createElement('div');item.className='lap';num.className='lap-no';num.textContent=`#${String(laps.length-index).padStart(2,'0')}`;total.className='lap-total';total.textContent=format(lap.total,true);splitEl.className='lap-split';splitEl.textContent=`구간 +${format(lap.split,true)}`;text.append(total,splitEl);item.append(num,text);lapsList.appendChild(item);});lapCount.textContent=laps.length;emptyState.hidden=laps.length>0;}
+      function state(){return{running,elapsedMilliseconds:Math.round(currentElapsed()),lapCount:laps.length,stackedSeconds:split(currentElapsed()).totalSeconds%60};}
+
+      toggleBtn.addEventListener('click',toggle);lapBtn.addEventListener('click',addLap);resetBtn.addEventListener('click',reset);addEventListener('keydown',event=>{if(event.repeat||event.target.matches('input,textarea,select'))return;if(event.code==='Space'||event.code==='Enter'){event.preventDefault();toggle();}if(event.key.toLowerCase()==='l'){event.preventDefault();addLap();}if(event.key.toLowerCase()==='r'){event.preventDefault();reset();}});
+      const context=document.modelContext;if(context?.registerTool){const register=(name,title,description,execute)=>{try{void Promise.resolve(context.registerTool({name,title,description,inputSchema:{type:'object',properties:{},additionalProperties:false},annotations:{readOnlyHint:false,untrustedContentHint:false},execute})).catch(()=>{});}catch(_){}};register('toggle_stopwatch','스탑워치 시작 또는 일시정지','타임 젤리를 쌓기 시작하거나 일시정지합니다.',toggle);register('record_lap','랩 기록','실행 중인 스탑워치에 랩 기록을 추가합니다.',addLap);register('reset_stopwatch','스탑워치 초기화','시간, 젤리 보드, 랩 기록을 모두 초기화합니다.',reset);}
+      renderLaps();syncControls();paint(0);
+    })();
+  </script>
+</body>
+</html>
+

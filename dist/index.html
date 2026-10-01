@@ -3,508 +3,107 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#0b0d10">
-  <meta name="description" content="빠르고 정확한 온라인 스탑워치">
-  <title>스탑워치</title>
-  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%230b0d10'/%3E%3Ccircle cx='32' cy='35' r='18' fill='none' stroke='%23ff5c35' stroke-width='5'/%3E%3Cpath d='M32 17v-7m-7 0h14M45 20l4-4' stroke='%23f4f1ea' stroke-width='5' stroke-linecap='round'/%3E%3Cpath d='M32 35l8-7' stroke='%23f4f1ea' stroke-width='4' stroke-linecap='round'/%3E%3C/svg%3E">
+  <meta name="theme-color" content="#090716">
+  <meta name="description" content="시간에 따라 색과 도트가 변화하는 몰입형 스탑워치">
+  <title>DOT / TIME — 스탑워치</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%23090716'/%3E%3Cg fill='%23ffec57'%3E%3Ccircle cx='20' cy='20' r='6'/%3E%3Ccircle cx='44' cy='20' r='3'/%3E%3Ccircle cx='20' cy='44' r='3'/%3E%3Ccircle cx='44' cy='44' r='6'/%3E%3C/g%3E%3C/svg%3E">
   <style>
-    :root {
-      color-scheme: dark;
-      --bg: #0b0d10;
-      --panel: #12151a;
-      --line: #292e36;
-      --text: #f4f1ea;
-      --muted: #9298a3;
-      --accent: #ff5c35;
-      --accent-strong: #ff704f;
-      --lime: #c9ff5a;
-      --radius: 22px;
-    }
-
+    :root { color-scheme: dark; --hue: 278; --hue-next: 330; --ink: #fffdf6; --dim: rgba(255,253,246,.58); --accent: hsl(var(--hue) 100% 68%); --accent-2: hsl(var(--hue-next) 100% 66%); --lime: #edff85; }
     * { box-sizing: border-box; }
-
-    html, body { min-height: 100%; }
-
-    body {
-      margin: 0;
-      min-height: 100vh;
-      background:
-        radial-gradient(circle at 80% 15%, rgba(255, 92, 53, .09), transparent 31rem),
-        radial-gradient(circle at 15% 85%, rgba(201, 255, 90, .055), transparent 26rem),
-        var(--bg);
-      color: var(--text);
-      font-family: Inter, Pretendard, "Noto Sans KR", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      display: grid;
-      place-items: center;
-      padding: 28px;
-      overflow-x: hidden;
-    }
-
+    html, body { width: 100%; min-height: 100%; }
+    body { margin: 0; min-height: 100svh; overflow: hidden; color: var(--ink); background: radial-gradient(ellipse 80% 70% at calc(20% + var(--drift-x,0%)) calc(15% + var(--drift-y,0%)), hsl(var(--hue) 95% 55% / .28), transparent 64%), radial-gradient(ellipse 65% 80% at calc(88% - var(--drift-x,0%)) 86%, hsl(var(--hue-next) 96% 60% / .2), transparent 68%), linear-gradient(135deg,#080611 0%,hsl(var(--hue) 36% 10%) 52%,#060815 100%); font-family: Inter,Pretendard,"Noto Sans KR",system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; transition: background 1s linear; }
     button { font: inherit; }
-
-    .shell {
-      width: min(100%, 1040px);
-      display: grid;
-      grid-template-columns: minmax(0, 1.45fr) minmax(260px, .55fr);
-      border: 1px solid var(--line);
-      border-radius: calc(var(--radius) + 8px);
-      background: rgba(18, 21, 26, .82);
-      box-shadow: 0 28px 80px rgba(0, 0, 0, .42);
-      backdrop-filter: blur(16px);
-      overflow: hidden;
-    }
-
-    .timer-panel {
-      min-height: 650px;
-      padding: clamp(28px, 5vw, 58px);
-      display: flex;
-      flex-direction: column;
-      position: relative;
-    }
-
-    .timer-panel::after {
-      content: "";
-      position: absolute;
-      inset: 0;
-      pointer-events: none;
-      opacity: .32;
-      background-image: linear-gradient(rgba(255,255,255,.025) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.025) 1px, transparent 1px);
-      background-size: 34px 34px;
-      mask-image: linear-gradient(to bottom, black, transparent 70%);
-    }
-
-    .topbar,
-    .timer-wrap,
-    .controls,
-    .shortcuts { position: relative; z-index: 1; }
-
-    .topbar {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 20px;
-    }
-
-    .brand {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      font-size: 1rem;
-      font-weight: 750;
-      letter-spacing: -.02em;
-    }
-
-    .mark {
-      width: 13px;
-      height: 13px;
-      border-radius: 50%;
-      background: var(--accent);
-      box-shadow: 0 0 0 6px rgba(255,92,53,.11);
-    }
-
-    .status {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      color: var(--muted);
-      font-size: .8rem;
-      font-weight: 700;
-      letter-spacing: .08em;
-      text-transform: uppercase;
-    }
-
-    .status-dot {
-      width: 7px;
-      height: 7px;
-      border-radius: 50%;
-      background: #59606b;
-      transition: background .2s, box-shadow .2s;
-    }
-
-    .running .status-dot {
-      background: var(--lime);
-      box-shadow: 0 0 12px rgba(201,255,90,.65);
-    }
-
-    .timer-wrap {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      padding: 56px 0 42px;
-    }
-
-    .eyebrow {
-      margin: 0 0 16px;
-      color: var(--accent);
-      font-size: .78rem;
-      font-weight: 800;
-      letter-spacing: .18em;
-      text-transform: uppercase;
-    }
-
-    .time {
-      display: flex;
-      align-items: baseline;
-      font-variant-numeric: tabular-nums;
-      letter-spacing: -.075em;
-      line-height: .88;
-      white-space: nowrap;
-      user-select: none;
-    }
-
-    .time-main {
-      font-size: clamp(4.1rem, 10.2vw, 8.7rem);
-      font-weight: 760;
-    }
-
-    .time-ms {
-      min-width: 1.9em;
-      margin-left: .14em;
-      color: var(--muted);
-      font-size: clamp(2rem, 4.2vw, 3.55rem);
-      font-weight: 700;
-      letter-spacing: -.04em;
-    }
-
-    .controls {
-      display: grid;
-      grid-template-columns: 1fr auto auto;
-      gap: 12px;
-      align-items: center;
-    }
-
-    .btn {
-      min-height: 58px;
-      border: 1px solid var(--line);
-      border-radius: 16px;
-      padding: 0 22px;
-      background: #191d23;
-      color: var(--text);
-      cursor: pointer;
-      font-weight: 750;
-      transition: transform .16s ease, border-color .16s ease, background .16s ease;
-      touch-action: manipulation;
-    }
-
-    .btn:hover { border-color: #454c57; transform: translateY(-2px); }
-    .btn:active { transform: translateY(0); }
-    .btn:focus-visible { outline: 3px solid rgba(201,255,90,.55); outline-offset: 3px; }
-    .btn:disabled { opacity: .38; cursor: not-allowed; transform: none; }
-
-    .btn-primary {
-      background: var(--accent);
-      color: #140704;
-      border-color: transparent;
-      font-size: 1.08rem;
-    }
-
-    .btn-primary:hover { background: var(--accent-strong); border-color: transparent; }
-    .btn-icon { width: 58px; padding: 0; display: grid; place-items: center; }
-    .btn svg { width: 21px; height: 21px; }
-
-    .shortcuts {
-      margin-top: 22px;
-      color: #717783;
-      font-size: .78rem;
-      display: flex;
-      gap: 16px;
-      flex-wrap: wrap;
-    }
-
-    kbd {
-      display: inline-grid;
-      place-items: center;
-      min-width: 25px;
-      height: 22px;
-      margin-right: 5px;
-      padding: 0 6px;
-      border: 1px solid #343a44;
-      border-bottom-width: 2px;
-      border-radius: 6px;
-      background: #171a20;
-      color: #aab0ba;
-      font: 700 .7rem/1 system-ui, sans-serif;
-    }
-
-    .laps-panel {
-      min-height: 650px;
-      padding: 34px 28px;
-      border-left: 1px solid var(--line);
-      background: rgba(10, 12, 15, .48);
-      display: flex;
-      flex-direction: column;
-    }
-
-    .laps-head {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      min-height: 35px;
-      margin-bottom: 22px;
-    }
-
-    .laps-title { margin: 0; font-size: 1rem; letter-spacing: -.02em; }
-    .lap-count { color: var(--muted); font-size: .78rem; }
-
-    .laps-list {
-      list-style: none;
-      margin: 0;
-      padding: 0;
-      display: flex;
-      flex-direction: column;
-      gap: 7px;
-      overflow-y: auto;
-      max-height: 510px;
-      scrollbar-color: #373d47 transparent;
-    }
-
-    .lap {
-      display: grid;
-      grid-template-columns: 42px 1fr;
-      gap: 12px;
-      align-items: center;
-      padding: 14px 12px;
-      border-bottom: 1px solid rgba(255,255,255,.055);
-      animation: slideIn .24s ease both;
-    }
-
-    .lap-number { color: var(--muted); font: 750 .73rem/1 system-ui, sans-serif; }
-    .lap-times { min-width: 0; }
-    .lap-total { font-variant-numeric: tabular-nums; font-weight: 720; font-size: .98rem; }
-    .lap-split { margin-top: 5px; color: var(--muted); font-size: .75rem; font-variant-numeric: tabular-nums; }
-
-    .empty {
-      margin: auto 0;
-      text-align: center;
-      color: #696f79;
-      font-size: .88rem;
-      line-height: 1.7;
-    }
-
-    .empty-icon {
-      width: 48px;
-      height: 48px;
-      margin: 0 auto 14px;
-      border: 1px dashed #343a43;
-      border-radius: 50%;
-      display: grid;
-      place-items: center;
-      font-size: 1.15rem;
-    }
-
-    @keyframes slideIn {
-      from { opacity: 0; transform: translateY(-7px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-
-    @media (max-width: 760px) {
-      body { display: block; padding: 0; }
-      .shell { min-height: 100vh; border: 0; border-radius: 0; grid-template-columns: 1fr; }
-      .timer-panel { min-height: 68vh; padding: 28px 22px 26px; }
-      .laps-panel { min-height: 32vh; padding: 25px 22px; border-left: 0; border-top: 1px solid var(--line); }
-      .timer-wrap { padding: 50px 0 38px; }
-      .controls { grid-template-columns: 1fr 56px 56px; }
-      .shortcuts { display: none; }
-      .laps-list { max-height: 270px; }
-    }
-
-    @media (max-width: 420px) {
-      .time-main { font-size: 3.85rem; }
-      .time-ms { font-size: 1.8rem; }
-      .btn { min-height: 56px; padding: 0 16px; }
-    }
-
-    @media (prefers-reduced-motion: reduce) {
-      *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
-    }
+    #dotField { position: fixed; inset: 0; width: 100%; height: 100%; z-index: 0; pointer-events: none; }
+    .noise { position: fixed; inset: 0; z-index: 1; pointer-events: none; opacity: .18; background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.32'/%3E%3C/svg%3E"); mix-blend-mode: soft-light; }
+    .app { position: relative; z-index: 2; width: 100%; min-height: 100svh; display: grid; grid-template-columns: minmax(0,1fr) clamp(270px,25vw,360px); }
+    .stage { min-width: 0; min-height: 100svh; padding: clamp(22px,3.4vw,54px); display: flex; flex-direction: column; }
+    .topbar { display: flex; justify-content: space-between; align-items: center; gap: 20px; }
+    .identity { display: flex; align-items: center; gap: 13px; font-size: .9rem; font-weight: 800; letter-spacing: .16em; text-transform: uppercase; }
+    .logo-grid { display: grid; grid-template-columns: repeat(2,6px); gap: 4px; transform: rotate(45deg); }
+    .logo-grid i { width: 6px; height: 6px; display: block; border-radius: 50%; background: var(--ink); box-shadow: 0 0 12px var(--accent); }
+    .logo-grid i:nth-child(2), .logo-grid i:nth-child(3) { opacity: .3; }
+    .mode { display: flex; align-items: center; gap: 9px; padding: 9px 13px; border: 1px solid rgba(255,255,255,.15); border-radius: 999px; color: var(--dim); background: rgba(0,0,0,.12); backdrop-filter: blur(14px); font-size: .72rem; font-weight: 800; letter-spacing: .13em; text-transform: uppercase; }
+    .pulse { width: 7px; height: 7px; border-radius: 50%; background: rgba(255,255,255,.35); transition: background .25s,box-shadow .25s; }
+    .running .pulse { background: var(--lime); box-shadow: 0 0 0 5px rgba(237,255,133,.12),0 0 20px var(--lime); }
+    .time-space { flex: 1; display: grid; place-items: center; padding: clamp(48px,8vh,110px) 0 38px; }
+    .time-block { width: 100%; text-align: center; }
+    .orbit-label { margin-bottom: clamp(22px,4vh,48px); display: flex; justify-content: center; align-items: center; gap: 16px; color: var(--dim); font-size: .68rem; font-weight: 850; letter-spacing: .27em; text-transform: uppercase; }
+    .orbit-label::before, .orbit-label::after { content: ""; width: clamp(35px,6vw,86px); height: 1px; background: linear-gradient(90deg,transparent,rgba(255,255,255,.4)); }
+    .orbit-label::after { transform: scaleX(-1); }
+    .clock { position: relative; display: inline-flex; align-items: flex-end; justify-content: center; font-variant-numeric: tabular-nums; font-feature-settings: "tnum" 1; white-space: nowrap; filter: drop-shadow(0 18px 36px rgba(0,0,0,.28)); }
+    .clock::before { content: ""; position: absolute; z-index: -1; left: 10%; right: 10%; bottom: 7%; height: 22%; border-radius: 50%; background: var(--accent); opacity: .22; filter: blur(48px); transform: scaleX(.8); }
+    .clock-main { font-size: clamp(5.5rem,16vw,15.5rem); font-weight: 780; line-height: .72; letter-spacing: -.095em; text-shadow: 0 1px 0 rgba(255,255,255,.24); }
+    .clock-cs { min-width: 1.8em; margin-left: .17em; padding-bottom: .02em; color: var(--accent); font-size: clamp(2.2rem,5vw,5.2rem); font-weight: 760; line-height: .8; letter-spacing: -.05em; transition: color .7s linear; }
+    .second-track { width: min(560px,70%); height: 3px; margin: clamp(35px,6vh,70px) auto 0; border-radius: 99px; background: rgba(255,255,255,.1); overflow: hidden; }
+    .second-fill { width: 0; height: 100%; border-radius: inherit; background: linear-gradient(90deg,var(--accent),var(--accent-2)); box-shadow: 0 0 18px var(--accent); transition: background .7s linear; }
+    .controls-row { display: flex; justify-content: center; align-items: center; gap: 12px; }
+    .control { border: 1px solid rgba(255,255,255,.16); color: var(--ink); background: rgba(9,7,22,.38); backdrop-filter: blur(18px) saturate(140%); cursor: pointer; transition: transform .18s ease,background .18s ease,border-color .18s ease,opacity .18s ease; touch-action: manipulation; }
+    .control:hover:not(:disabled) { transform: translateY(-3px); border-color: rgba(255,255,255,.34); }
+    .control:active:not(:disabled) { transform: translateY(0) scale(.97); }
+    .control:focus-visible { outline: 3px solid var(--lime); outline-offset: 4px; }
+    .control:disabled { opacity: .28; cursor: not-allowed; }
+    .control-main { min-width: 190px; min-height: 64px; padding: 0 34px; border: 0; border-radius: 999px; background: var(--ink); color: #100d1f; font-weight: 850; font-size: 1rem; letter-spacing: .02em; box-shadow: 0 14px 40px rgba(0,0,0,.25),0 0 0 0 var(--accent); }
+    .running .control-main { background: var(--lime); box-shadow: 0 14px 40px rgba(0,0,0,.25),0 0 44px rgba(237,255,133,.17); }
+    .control-round { width: 64px; height: 64px; padding: 0; border-radius: 50%; display: grid; place-items: center; }
+    .control svg { width: 21px; height: 21px; }
+    .keyline { margin-top: 22px; display: flex; justify-content: center; gap: 19px; color: rgba(255,255,255,.38); font-size: .72rem; }
+    kbd { margin-right: 5px; color: rgba(255,255,255,.65); font: 800 .68rem/1 system-ui,sans-serif; }
+    .laps { position: relative; min-height: 100svh; padding: clamp(22px,3.2vw,50px) clamp(20px,2.4vw,34px); display: flex; flex-direction: column; border-left: 1px solid rgba(255,255,255,.1); background: linear-gradient(180deg,rgba(8,7,17,.28),rgba(8,7,17,.58)); backdrop-filter: blur(24px) saturate(130%); }
+    .laps::before { content: ""; position: absolute; top: 0; left: -1px; width: 1px; height: 32%; background: linear-gradient(var(--accent),transparent); box-shadow: 0 0 16px var(--accent); transition: background .7s linear; }
+    .laps-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding-bottom: 22px; border-bottom: 1px solid rgba(255,255,255,.1); }
+    .laps-title { margin: 0; font-size: .8rem; font-weight: 850; letter-spacing: .18em; text-transform: uppercase; }
+    .lap-count { color: var(--dim); font-size: .75rem; font-variant-numeric: tabular-nums; }
+    .laps-list { list-style: none; margin: 12px -8px 0; padding: 0 8px 20px; display: flex; flex-direction: column; overflow-y: auto; scrollbar-width: thin; scrollbar-color: rgba(255,255,255,.24) transparent; }
+    .lap { display: grid; grid-template-columns: 38px 1fr auto; align-items: center; gap: 12px; min-height: 70px; border-bottom: 1px dotted rgba(255,255,255,.15); animation: rise .26s ease both; }
+    .lap-dot { width: 26px; height: 26px; display: grid; place-items: center; border: 1px solid rgba(255,255,255,.18); border-radius: 50%; color: var(--dim); font-size: .65rem; font-weight: 800; }
+    .lap-total { font-size: .98rem; font-weight: 720; font-variant-numeric: tabular-nums; }
+    .lap-split { color: var(--dim); font-size: .72rem; font-variant-numeric: tabular-nums; }
+    .empty { margin: auto 0; text-align: center; color: rgba(255,255,255,.42); font-size: .82rem; line-height: 1.7; }
+    .empty-dots { width: 62px; margin: 0 auto 17px; display: grid; grid-template-columns: repeat(5,1fr); gap: 7px; }
+    .empty-dots i { aspect-ratio: 1; border-radius: 50%; background: rgba(255,255,255,.16); }
+    .empty-dots i:nth-child(3) { background: var(--accent); box-shadow: 0 0 16px var(--accent); }
+    @keyframes rise { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+    @media (max-width:820px) { body { overflow-y:auto; } .app { grid-template-columns:1fr; } .stage { min-height:74svh; padding:22px 20px 26px; } .time-space { padding:70px 0 48px; } .clock-main { font-size:clamp(4.4rem,23vw,8rem); } .clock-cs { font-size:clamp(1.7rem,8vw,3rem); } .second-track { width:72%; margin-top:38px; } .laps { min-height:26svh; max-height:48svh; border-left:0; border-top:1px solid rgba(255,255,255,.1); } .laps::before { top:-1px; left:0; width:40%; height:1px; background:linear-gradient(90deg,var(--accent),transparent); } .laps-list { max-height:250px; } .empty { padding:35px 0; } }
+    @media (max-width:470px) { .identity { font-size:.75rem; } .mode { padding:8px 10px; font-size:.62rem; } .orbit-label { font-size:.58rem; gap:10px; } .clock-main { font-size:4.2rem; } .clock-cs { font-size:1.65rem; } .control-main { min-width:155px; min-height:58px; } .control-round { width:58px; height:58px; } .keyline { display:none; } }
+    @media (prefers-reduced-motion:reduce) { *,*::before,*::after { animation-duration:.01ms!important; transition-duration:.01ms!important; } }
   </style>
 </head>
 <body>
-  <main class="shell" id="app">
-    <section class="timer-panel" aria-labelledby="page-title">
-      <header class="topbar">
-        <div class="brand"><span class="mark" aria-hidden="true"></span><span id="page-title">스탑워치</span></div>
-        <div class="status" aria-live="polite"><span class="status-dot" aria-hidden="true"></span><span id="statusText">준비</span></div>
-      </header>
-
-      <div class="timer-wrap">
-        <p class="eyebrow">Elapsed time</p>
-        <div class="time" role="timer" aria-live="off" aria-label="경과 시간">
-          <span class="time-main" id="timeMain">00:00</span><span class="time-ms" id="timeMs">.00</span>
-        </div>
+  <canvas id="dotField" aria-hidden="true"></canvas><div class="noise" aria-hidden="true"></div>
+  <main class="app" id="app">
+    <section class="stage" aria-labelledby="pageTitle">
+      <header class="topbar"><div class="identity" id="pageTitle"><span class="logo-grid" aria-hidden="true"><i></i><i></i><i></i><i></i></span><span>Dot / Time</span></div><div class="mode" aria-live="polite"><span class="pulse" aria-hidden="true"></span><span id="statusText">Ready</span></div></header>
+      <div class="time-space"><div class="time-block"><div class="orbit-label">Elapsed spectrum</div><div class="clock" role="timer" aria-label="경과 시간"><span class="clock-main" id="timeMain">00:00</span><span class="clock-cs" id="timeCs">.00</span></div><div class="second-track" aria-hidden="true"><div class="second-fill" id="secondFill"></div></div></div></div>
+      <div class="controls-row">
+        <button class="control control-round" id="lapBtn" type="button" aria-label="랩 기록" title="랩 기록" disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 8v8M8 12h8" stroke-linecap="round"/></svg></button>
+        <button class="control control-main" id="toggleBtn" type="button">시작</button>
+        <button class="control control-round" id="resetBtn" type="button" aria-label="초기화" title="초기화" disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.34 5.66M20 4v7h-7" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
       </div>
-
-      <div class="controls">
-        <button class="btn btn-primary" id="toggleBtn" type="button">시작</button>
-        <button class="btn btn-icon" id="lapBtn" type="button" aria-label="랩 기록" title="랩 기록" disabled>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M5 4v16M5 5h10l-2 4 2 4H5" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        </button>
-        <button class="btn btn-icon" id="resetBtn" type="button" aria-label="초기화" title="초기화" disabled>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.34 5.66M20 4v7h-7" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        </button>
-      </div>
-
-      <div class="shortcuts" aria-label="키보드 단축키">
-        <span><kbd>Space</kbd> 시작 / 일시정지</span>
-        <span><kbd>L</kbd> 랩</span>
-        <span><kbd>R</kbd> 초기화</span>
-      </div>
+      <div class="keyline" aria-label="키보드 단축키"><span><kbd>SPACE</kbd>시작 / 정지</span><span><kbd>L</kbd>랩</span><span><kbd>R</kbd>초기화</span></div>
     </section>
-
-    <aside class="laps-panel" aria-labelledby="lapsTitle">
-      <div class="laps-head">
-        <h2 class="laps-title" id="lapsTitle">랩 기록</h2>
-        <span class="lap-count" id="lapCount">0개</span>
-      </div>
-      <ol class="laps-list" id="lapsList"></ol>
-      <div class="empty" id="emptyState">
-        <div class="empty-icon" aria-hidden="true">＋</div>
-        측정 중 랩 버튼을 누르면<br>구간 기록이 여기에 표시됩니다.
-      </div>
-    </aside>
+    <aside class="laps" aria-labelledby="lapsTitle"><header class="laps-head"><h2 class="laps-title" id="lapsTitle">Lap archive</h2><span class="lap-count" id="lapCount">00</span></header><ol class="laps-list" id="lapsList"></ol><div class="empty" id="emptyState"><div class="empty-dots" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>랩을 기록하면<br>시간의 조각이 쌓입니다.</div></aside>
   </main>
-
   <script>
     (() => {
-      const app = document.getElementById('app');
-      const timeMain = document.getElementById('timeMain');
-      const timeMs = document.getElementById('timeMs');
-      const toggleBtn = document.getElementById('toggleBtn');
-      const lapBtn = document.getElementById('lapBtn');
-      const resetBtn = document.getElementById('resetBtn');
-      const statusText = document.getElementById('statusText');
-      const lapsList = document.getElementById('lapsList');
-      const lapCount = document.getElementById('lapCount');
-      const emptyState = document.getElementById('emptyState');
-
-      let running = false;
-      let startedAt = 0;
-      let elapsed = 0;
-      let animationId = 0;
-      let laps = [];
-
-      const currentElapsed = () => running ? elapsed + performance.now() - startedAt : elapsed;
-
-      function parts(ms) {
-        const totalCentiseconds = Math.floor(ms / 10);
-        const cs = totalCentiseconds % 100;
-        const totalSeconds = Math.floor(totalCentiseconds / 100);
-        const seconds = totalSeconds % 60;
-        const totalMinutes = Math.floor(totalSeconds / 60);
-        const minutes = totalMinutes % 60;
-        const hours = Math.floor(totalMinutes / 60);
-        return { hours, minutes, seconds, cs };
-      }
-
-      function format(ms, compact = false) {
-        const { hours, minutes, seconds, cs } = parts(ms);
-        const prefix = hours > 0 ? `${String(hours).padStart(2, '0')}:` : '';
-        return `${prefix}${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}${compact ? '.' + String(cs).padStart(2, '0') : ''}`;
-      }
-
-      function paint(ms) {
-        const { hours, minutes, seconds, cs } = parts(ms);
-        timeMain.textContent = `${hours > 0 ? String(hours).padStart(2, '0') + ':' : ''}${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
-        timeMs.textContent = `.${String(cs).padStart(2, '0')}`;
-      }
-
-      function frame() {
-        paint(currentElapsed());
-        if (running) animationId = requestAnimationFrame(frame);
-      }
-
-      function updateControls() {
-        app.classList.toggle('running', running);
-        toggleBtn.textContent = running ? '일시정지' : elapsed > 0 ? '계속' : '시작';
-        statusText.textContent = running ? '측정 중' : elapsed > 0 ? '일시정지' : '준비';
-        lapBtn.disabled = !running;
-        resetBtn.disabled = elapsed === 0 && !running;
-      }
-
-      function toggle() {
-        if (running) {
-          elapsed += performance.now() - startedAt;
-          running = false;
-          cancelAnimationFrame(animationId);
-          paint(elapsed);
-        } else {
-          startedAt = performance.now();
-          running = true;
-          frame();
-        }
-        updateControls();
-        return state();
-      }
-
-      function reset() {
-        running = false;
-        cancelAnimationFrame(animationId);
-        startedAt = 0;
-        elapsed = 0;
-        laps = [];
-        paint(0);
-        renderLaps();
-        updateControls();
-        return state();
-      }
-
-      function addLap() {
-        if (!running) return state();
-        const total = currentElapsed();
-        const previous = laps.length ? laps[laps.length - 1].total : 0;
-        laps.push({ total, split: total - previous });
-        renderLaps();
-        return state();
-      }
-
-      function renderLaps() {
-        lapsList.replaceChildren();
-        [...laps].reverse().forEach((lap, reversedIndex) => {
-          const number = laps.length - reversedIndex;
-          const item = document.createElement('li');
-          item.className = 'lap';
-          item.innerHTML = `<span class="lap-number">${String(number).padStart(2, '0')}</span><div class="lap-times"><div class="lap-total">${format(lap.total, true)}</div><div class="lap-split">구간 +${format(lap.split, true)}</div></div>`;
-          lapsList.appendChild(item);
-        });
-        lapCount.textContent = `${laps.length}개`;
-        emptyState.hidden = laps.length > 0;
-      }
-
-      function state() {
-        return { running, elapsedMilliseconds: Math.round(currentElapsed()), lapCount: laps.length };
-      }
-
-      toggleBtn.addEventListener('click', toggle);
-      lapBtn.addEventListener('click', addLap);
-      resetBtn.addEventListener('click', reset);
-
-      window.addEventListener('keydown', (event) => {
-        if (event.repeat || event.target.matches('input, textarea, select')) return;
-        if (event.code === 'Space' || event.code === 'Enter') { event.preventDefault(); toggle(); }
-        if (event.key.toLowerCase() === 'l') { event.preventDefault(); addLap(); }
-        if (event.key.toLowerCase() === 'r') { event.preventDefault(); reset(); }
-      });
-
-      const modelContext = document.modelContext;
-      if (modelContext?.registerTool) {
-        const tool = (name, title, description, action) => {
-          try {
-            void Promise.resolve(modelContext.registerTool({
-              name, title, description,
-              inputSchema: { type: 'object', properties: {}, additionalProperties: false },
-              annotations: { readOnlyHint: false, untrustedContentHint: false },
-              execute: action
-            })).catch(() => {});
-          } catch (_) {}
-        };
-        tool('toggle_stopwatch', '스탑워치 시작 또는 일시정지', '현재 상태에 따라 스탑워치를 시작하거나 일시정지합니다.', toggle);
-        tool('record_lap', '랩 기록', '실행 중인 스탑워치에 현재 랩 기록을 추가합니다.', addLap);
-        tool('reset_stopwatch', '스탑워치 초기화', '경과 시간과 모든 랩 기록을 초기화합니다.', reset);
-      }
-
-      updateControls();
-      renderLaps();
+      const root=document.documentElement,app=document.getElementById('app'),timeMain=document.getElementById('timeMain'),timeCs=document.getElementById('timeCs'),secondFill=document.getElementById('secondFill'),toggleBtn=document.getElementById('toggleBtn'),lapBtn=document.getElementById('lapBtn'),resetBtn=document.getElementById('resetBtn'),statusText=document.getElementById('statusText'),lapsList=document.getElementById('lapsList'),lapCount=document.getElementById('lapCount'),emptyState=document.getElementById('emptyState'),canvas=document.getElementById('dotField'),context=canvas.getContext('2d'),reduceMotion=matchMedia('(prefers-reduced-motion: reduce)').matches;
+      let running=false,startedAt=0,elapsed=0,frameId=0,laps=[],width=0,height=0,dpr=1;
+      const nowElapsed=()=>running?elapsed+performance.now()-startedAt:elapsed;
+      function split(ms){const centiseconds=Math.floor(ms/10),cs=centiseconds%100,totalSeconds=Math.floor(centiseconds/100),seconds=totalSeconds%60,totalMinutes=Math.floor(totalSeconds/60),minutes=totalMinutes%60,hours=Math.floor(totalMinutes/60);return{hours,minutes,seconds,cs};}
+      function format(ms,withCs=false){const p=split(ms),hours=p.hours?`${String(p.hours).padStart(2,'0')}:`:'';return`${hours}${String(p.minutes).padStart(2,'0')}:${String(p.seconds).padStart(2,'0')}${withCs?'.'+String(p.cs).padStart(2,'0'):''}`;}
+      function palette(ms){const cycle=ms/1000%60,hue=(260+cycle*4.8)%360;root.style.setProperty('--hue',hue.toFixed(1));root.style.setProperty('--hue-next',((hue+62)%360).toFixed(1));root.style.setProperty('--drift-x',`${Math.sin(ms/6800)*7}%`);root.style.setProperty('--drift-y',`${Math.cos(ms/8300)*5}%`);return hue;}
+      function paint(ms){const p=split(ms);timeMain.textContent=`${p.hours?String(p.hours).padStart(2,'0')+':':''}${String(p.minutes).padStart(2,'0')}:${String(p.seconds).padStart(2,'0')}`;timeCs.textContent=`.${String(p.cs).padStart(2,'0')}`;secondFill.style.width=`${ms%60000/60000*100}%`;const hue=palette(ms);drawDots(ms,hue);}
+      function resizeCanvas(){dpr=Math.min(devicePixelRatio||1,2);width=innerWidth;height=innerHeight;canvas.width=Math.round(width*dpr);canvas.height=Math.round(height*dpr);canvas.style.width=`${width}px`;canvas.style.height=`${height}px`;context.setTransform(dpr,0,0,dpr,0,0);drawDots(nowElapsed(),palette(nowElapsed()));}
+      function drawDots(ms,hue){context.clearRect(0,0,width,height);const gap=width<600?25:31,cols=Math.ceil(width/gap)+2,rows=Math.ceil(height/gap)+2,phase=reduceMotion?0:ms/720,cx=width*(.48+Math.sin(ms/9000)*.08),cy=height*(.46+Math.cos(ms/11000)*.09);for(let row=-1;row<rows;row++){for(let col=-1;col<cols;col++){const x=col*gap+(row%2?gap/2:0),y=row*gap,distance=Math.hypot(x-cx,y-cy),wave=(Math.sin(distance/62-phase)+1)/2,edge=Math.max(0,1-distance/Math.max(width,height)*1.22),radius=.7+wave*2.15*edge,alpha=.08+wave*.26*edge;context.beginPath();context.arc(x,y,radius,0,Math.PI*2);context.fillStyle=`hsla(${(hue+distance/9)%360},100%,${68+wave*15}%,${alpha})`;context.fill();}}}
+      function loop(){paint(nowElapsed());if(running)frameId=requestAnimationFrame(loop);}
+      function syncControls(){app.classList.toggle('running',running);toggleBtn.textContent=running?'일시정지':elapsed>0?'계속':'시작';statusText.textContent=running?'In motion':elapsed>0?'Paused':'Ready';lapBtn.disabled=!running;resetBtn.disabled=elapsed===0&&!running;}
+      function toggle(){if(running){elapsed+=performance.now()-startedAt;running=false;cancelAnimationFrame(frameId);paint(elapsed);}else{startedAt=performance.now();running=true;loop();}syncControls();return getState();}
+      function reset(){running=false;cancelAnimationFrame(frameId);startedAt=0;elapsed=0;laps=[];renderLaps();paint(0);syncControls();return getState();}
+      function recordLap(){if(!running)return getState();const total=nowElapsed(),previous=laps.length?laps[laps.length-1].total:0;laps.push({total,interval:total-previous});renderLaps();return getState();}
+      function renderLaps(){lapsList.replaceChildren();[...laps].reverse().forEach((lap,index)=>{const number=laps.length-index,item=document.createElement('li'),dot=document.createElement('span'),total=document.createElement('span'),interval=document.createElement('span');item.className='lap';dot.className='lap-dot';dot.textContent=String(number).padStart(2,'0');total.className='lap-total';total.textContent=format(lap.total,true);interval.className='lap-split';interval.textContent=`+${format(lap.interval,true)}`;item.append(dot,total,interval);lapsList.appendChild(item);});lapCount.textContent=String(laps.length).padStart(2,'0');emptyState.hidden=laps.length>0;}
+      function getState(){return{running,elapsedMilliseconds:Math.round(nowElapsed()),lapCount:laps.length};}
+      toggleBtn.addEventListener('click',toggle);lapBtn.addEventListener('click',recordLap);resetBtn.addEventListener('click',reset);addEventListener('resize',resizeCanvas,{passive:true});addEventListener('keydown',event=>{if(event.repeat||event.target.matches('input, textarea, select'))return;if(event.code==='Space'||event.code==='Enter'){event.preventDefault();toggle();}if(event.key.toLowerCase()==='l'){event.preventDefault();recordLap();}if(event.key.toLowerCase()==='r'){event.preventDefault();reset();}});
+      const modelContext=document.modelContext;if(modelContext?.registerTool){const register=(name,title,description,execute)=>{try{void Promise.resolve(modelContext.registerTool({name,title,description,inputSchema:{type:'object',properties:{},additionalProperties:false},annotations:{readOnlyHint:false,untrustedContentHint:false},execute})).catch(()=>{});}catch(_){}};register('toggle_stopwatch','스탑워치 시작 또는 일시정지','현재 상태에 따라 스탑워치를 시작하거나 일시정지합니다.',toggle);register('record_lap','랩 기록','실행 중인 스탑워치에 현재 랩 기록을 추가합니다.',recordLap);register('reset_stopwatch','스탑워치 초기화','경과 시간과 모든 랩 기록을 초기화합니다.',reset);}
+      resizeCanvas();renderLaps();syncControls();paint(0);
     })();
   </script>
 </body>
